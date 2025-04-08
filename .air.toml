@@ -1,0 +1,28 @@
+
+
+# The working directory
+root = "."
+
+# Watch for changes in these directories
+[build]
+  cmd = "go build -o ./tmp/main ."  # Build command
+  bin = "tmp/main"                  # Binary to run
+  delay = 1000
+  full_bin = "tmp/main"            # Optional if same as above
+  include_ext = ["go"]             # File extensions to watch
+  exclude_dir = ["tmp", "vendor"]  # Don't watch these dirs
+  exclude_file = []                # Optional, ignored files
+
+[log]
+  time = true
+  color = true
+
+[color]
+  main = "yellow"
+  watcher = "cyan"
+  build = "green"
+  runner = "magenta"
+
+
+[misc]
+clean_on_exit = true
