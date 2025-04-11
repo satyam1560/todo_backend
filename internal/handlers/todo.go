@@ -3,12 +3,12 @@ package handlers
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"fmt"
+	
+
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	db "github.com/satyam1560/todo_backend/internal/database/generated"
 )
 
@@ -16,110 +16,102 @@ type TodoHandler struct {
 	Q *db.Queries
 }
 
-func writeJSON(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(data)
-}
+
 
 // POST /api/todos
-func (h *TodoHandler) CreateTodoHandler(w http.ResponseWriter, r *http.Request) {
+func (h *TodoHandler) CreateTodoHandler(c *gin.Context) {
 	var input db.CreateTodoParams
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
 	todo, err := h.Q.CreateTodo(context.Background(), input)
 	if err != nil {
-		http.Error(w, "Could not create todo", http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create todo"})
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, todo)
+	c.JSON(http.StatusCreated, todo)
 }
 
 // GET /api/todos
-func (h *TodoHandler) GetTodosHandler(w http.ResponseWriter, r *http.Request) {
+func (h *TodoHandler) GetTodosHandler(c *gin.Context) {
+
 	todos, err := h.Q.ListTodos(context.Background())
 	if err != nil {
-		http.Error(w, "Failed to fetch todos", http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch todos"})
 		return
 	}
-	writeJSON(w, http.StatusOK, todos)
+	c.JSON(http.StatusOK, todos)
 }
 
-// GET /api/todos/{id}
-func (h *TodoHandler) GetTodoHandler(w http.ResponseWriter, r *http.Request) {
-	todo, err := h.getTodoByID(r)
-
-	fmt.Println(todo)
+// GET /api/todos/:id
+func (h *TodoHandler) GetTodoHandler(c *gin.Context) {
+	todo, err := h.getTodoByID(c)
 	if err != nil {
-		http.Error(w, "Todo not found or invalid ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Todo not found or invalid ID"})
 		return
 	}
-	writeJSON(w, http.StatusOK, todo)
+	c.JSON(http.StatusOK, todo)
 }
 
-// PUT /api/todos/{id}
-func (h *TodoHandler) UpdateTodoHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := extractUUID(r)
+// PUT /api/todos/:id
+func (h *TodoHandler) UpdateTodoHandler(c *gin.Context) {
+	id, err := parseUUIDParam(c)
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
 	var input db.UpdateTodoParams
-	input.ID = id
-
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
+	input.ID = id
 
 	todo, err := h.Q.UpdateTodo(context.Background(), input)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Todo not found", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
 			return
 		}
-		http.Error(w, "Could not update todo", http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update todo"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, todo)
+	c.JSON(http.StatusOK, todo)
 }
 
-// DELETE /api/todos/{id}
-func (h *TodoHandler) DeleteTodoHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := extractUUID(r)
+// DELETE /api/todos/:id
+func (h *TodoHandler) DeleteTodoHandler(c *gin.Context) {
+	id, err := parseUUIDParam(c)
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
 	err = h.Q.DeleteTodo(context.Background(), id)
 	if err != nil {
-		http.Error(w, "Could not delete todo", http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not delete todo"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
-		"message": "✅ Todo successfully deleted",
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "✅ Todo successfully deleted"})
 }
 
-// Helper: fetch todo by ID using SQLC
-func (h *TodoHandler) getTodoByID(r *http.Request) (db.Todo, error) {
-	id, err := extractUUID(r)
+// Helper: get todo by ID
+func (h *TodoHandler) getTodoByID(c *gin.Context) (db.Todo, error) {
+	id, err := parseUUIDParam(c)
 	if err != nil {
 		return db.Todo{}, err
 	}
 	return h.Q.GetTodo(context.Background(), id)
 }
 
-// Helper: extract UUID from path
-func extractUUID(r *http.Request) (uuid.UUID, error) {
-	vars := mux.Vars(r)
-	return uuid.Parse(vars["id"])
+// Helper: parse UUID from Gin param
+func parseUUIDParam(c *gin.Context) (uuid.UUID, error) {
+	idParam := c.Param("id")
+	return uuid.Parse(idParam)
 }

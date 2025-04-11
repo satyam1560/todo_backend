@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
+	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
 	"github.com/satyam1560/todo_backend/api/middleware"
@@ -25,14 +26,22 @@ func main() {
 
 	// Initialize SQLC query handler
 	queries := db.New(dbConn)
-	// Pass queries into the router
-	r := router.NewRouter(queries)
 
-	loggedRouter := middleware.Logger(r)
+	// 🔥 Create Gin router and apply middleware
+	r := gin.New()
+	gin.SetMode(os.Getenv("GIN_MODE"))
+	r.Use(gin.Recovery())   
 
+	          // Handles panics
+	r.Use(middleware.LoggerMiddleware()) // Your custom logger
+
+	// 🧠 Register your routes
+	router.RegisterRoutes(r, queries)
+
+	// ✅ Start Gin server
 	addr := ":8080"
 	fmt.Printf("🚀 Server started at http://localhost%s\n", addr)
-	if err := http.ListenAndServe(addr, loggedRouter); err != nil {
+	if err := r.Run(addr); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -5,6 +5,7 @@ root = "."
 
 # Watch for changes in these directories
 [build]
+
   cmd = "go build -o ./tmp/main ."  # Build command
   bin = "tmp/main"                  # Binary to run
   delay = 1000

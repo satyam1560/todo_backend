@@ -20,8 +20,13 @@ project-root/
 │   │       |   └── todo_schema.sql  
 │   │       └── db_init.go 
 |   |
-│   └── handlers/
-│       └── todo_handlers.go        
+│   ├── handlers/
+│   |       └── todo_handlers.go        
+│   └── auth/
+│       ├── firebase.go
+│       ├── jwt.go
+│       └── user_auth.go
+|
 |               
 ├── api/                   
 │   ├── router/
@@ -32,6 +37,7 @@ project-root/
 ├── go.mod                   
 ├── go.sum                  
 ├── sqlc.yaml                
+├── firebase_adminSDK.json                
 ├── .env                  
 ├── .air.toml                  
 ├── .gitignore    
@@ -87,3 +93,5 @@ http://localhost:8080
 
 to run 
 air
+
+ migrate create -ext=sql -dir=internal/database/migrations -seq <table_name>

@@ -1,23 +1,31 @@
 package router
 
 import (
-	"net/http"
-
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	db "github.com/satyam1560/todo_backend/internal/database/generated"
 	"github.com/satyam1560/todo_backend/internal/handlers"
+	"github.com/satyam1560/todo_backend/api/middleware" // ✅ added
 )
 
-func NewRouter(q *db.Queries) *mux.Router {
-	r := mux.NewRouter().StrictSlash(true)
-
+func RegisterRoutes(r *gin.Engine, q *db.Queries) {
 	todoHandler := handlers.TodoHandler{Q: q}
+	authHandler := handlers.AuthHandler{Q: q}
 
-	r.HandleFunc("/api/todos", todoHandler.CreateTodoHandler).Methods(http.MethodPost)
-	r.HandleFunc("/api/todos", todoHandler.GetTodosHandler).Methods(http.MethodGet)
-	r.HandleFunc("/api/todos/{id}", todoHandler.GetTodoHandler).Methods(http.MethodGet)
-	r.HandleFunc("/api/todos/{id}", todoHandler.UpdateTodoHandler).Methods(http.MethodPut)
-	r.HandleFunc("/api/todos/{id}", todoHandler.DeleteTodoHandler).Methods(http.MethodDelete)
+	api := r.Group("/api")
+	{
+		auth := api.Group("/auth")
+		{
+			auth.POST("/login", authHandler.LoginWithFirebase)
+		}
 
-	return r
+		// ✅ Protected by JWT middleware
+		todos := api.Group("/todos", middleware.JWTAuthMiddleware())
+		{
+			todos.POST("", todoHandler.CreateTodoHandler)
+			todos.GET("", todoHandler.GetTodosHandler)
+			todos.GET("/:id", todoHandler.GetTodoHandler)
+			todos.PUT("/:id", todoHandler.UpdateTodoHandler)
+			todos.DELETE("/:id", todoHandler.DeleteTodoHandler)
+		}
+	}
 }
