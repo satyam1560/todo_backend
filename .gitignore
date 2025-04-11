@@ -17,3 +17,4 @@ generated/
 *.sql~
 *.dump
 *.backup
+firebase_adminSDK.json
